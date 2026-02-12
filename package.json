@@ -1,0 +1,21 @@
+{
+  "name": "backend01",
+  "version": "1.0.0",
+  "description": "Backend for the application",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": [
+    "Emam_saimon",
+    "Nodejs",
+    "Expressjs"
+  ],
+  "author": "Emam Saimon",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.11",
+    "prettier": "^3.7.4"
+  }
+}
