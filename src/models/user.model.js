@@ -1,4 +1,10 @@
 import mongoose, { Schema } from "mongoose";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
+
+
+
+
 const userSchema = new Schema(
   {
     username: {
@@ -16,7 +22,7 @@ const userSchema = new Schema(
       lowercase: true,
       trim: true
     },
-    fullname: {
+    fullName: {
       type: String,
       required: true,
       trim: true,
@@ -48,6 +54,22 @@ const userSchema = new Schema(
   { timestamps: true }
   
 );
+
+userSchema.pre("save", async function (next) {
+  this.password = bcrypt.hash(this.password, 10);
+  next();
+})
+
+
+
+
+
+
+
+
+
+
+
 
 const User = mongoose.model("User", userSchema);
 export default User;
