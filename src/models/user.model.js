@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const userSchema = new Schema(
   {
@@ -25,12 +25,12 @@ const userSchema = new Schema(
       trim: true,
       index: true,
     },
-    avater: {
-      type: String, // cloudinary theke image url asbe
+    avatar: {
+      type: String,
       required: true,
     },
     coverImage: {
-      type: String, // cloudinary theke image url asbe
+      type: String,
     },
     watchHistory: [
       {
@@ -50,21 +50,19 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-
-
-
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
-    return next();
+// ✅ Pre-save hook with safe async/await
+userSchema.pre("save", async function () {
+  if (this.isModified("password")) {
+    this.password = await bcrypt.hash(this.password, 10);
   }
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
 });
 
+// Check password
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
+// Generate Access Token
 userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
@@ -72,24 +70,19 @@ userSchema.methods.generateAccessToken = function () {
       email: this.email,
       username: this.username,
       fullName: this.fullName,
-      //avater: this.avater,
-     // coverImage: this.coverImage,
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
-    expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
     }
   );
 };
 
-
-userSchema.methods.generateRefreshToken = function () { 
+// Generate Refresh Token
+userSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
     {
       _id: this._id,
-     // email: this.email,
-     // username: this.username,
-     // fullName: this.fullName,
     },
     process.env.REFRESH_TOKEN_SECRET,
     {
@@ -98,11 +91,7 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
-
-
-
-const User = mongoose.model("User", userSchema);
-export default User;
+export const User = mongoose.model("User", userSchema);
 
 // ei c line er mane holo je amra mongoose theke model create korchi, jekhane "User" holo model er name ebong userSchema holo schema jeta amra age define korechi. Tarpor amra ei model ke export kore dichi jate onno jaygay use kora jay.
 
