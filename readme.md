@@ -4,5 +4,6 @@
 2. MongoDB cluster
 3. User and video model with hooks and JWT
 4. cloudinary and multer.js 
-
-setup all files 
+5. access and refresh token 
+6. postman setup 
+7. Api error handle....
