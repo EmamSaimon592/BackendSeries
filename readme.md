@@ -6,4 +6,5 @@
 4. cloudinary and multer.js 
 5. access and refresh token 
 6. postman setup 
-7. Api error handle....
+7. Api error handle
+8. Add refresh token functionality and clean up user routes
