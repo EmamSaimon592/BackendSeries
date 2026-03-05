@@ -273,6 +273,30 @@ const updateAccontDetails = asyncHandler(async (req, res) => {
 
 });
 
+const updateUserAvatar = asyncHandler(async (req, res) => { 
+  const avatarLocalPath = req.files?.path;
+
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar file is missing");
+  }
+  
+  const avatar = await uploadToCloudinary(avatarLocalPath);
+  if (!avatar.url) {
+    throw new ApiError(400, "Error while uploading avatar");
+  }
+  
+  await User.findByIdAndUpdate(
+    req.user?._id,
+    { 
+      $set: {
+        avatar: avatar.url
+      }
+     },
+    { new: true }
+  ).select("-password");
+  
+});
+
 
 
 export {
@@ -283,4 +307,5 @@ export {
   changeCurrentPassword,
   getCurrentUser,
   updateAccontDetails,
+  updateUserAvatar,
 };
