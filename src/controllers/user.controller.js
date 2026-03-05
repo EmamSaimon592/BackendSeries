@@ -158,12 +158,12 @@ const logoutUser = asyncHandler(async (req, res) => {
     {
       $set: {
         refreshToken: undefined,
-      }
+      },
     },
     {
       new: true,
     }
-  )
+  );
 
   const options = {
     httpOnly: true,
@@ -174,22 +174,22 @@ const logoutUser = asyncHandler(async (req, res) => {
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
     .json(new ApiResponse(200, {}, "User logged out successfully"));
-
 });
 
-const refreshAccessToken = asyncHandler(async (req, res) => { 
-  const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const incomingRefreshToken =
+    req.cookies.refreshToken || req.body.refreshToken;
 
   if (!incomingRefreshToken) {
     throw new ApiError(401, "unauthorized request, no refresh token");
   }
 
   try {
-    const decodedToken =   jwt.verify(
+    const decodedToken = jwt.verify(
       incomingRefreshToken,
-      process.env.REFRESH_TOKEN_SECRET,
-    )
-    const user = await User.findById(decodedToken?._id)
+      process.env.REFRESH_TOKEN_SECRET
+    );
+    const user = await User.findById(decodedToken?._id);
     if (!user) {
       throw new ApiError(401, "Invalid refresh token, user not found");
     }
@@ -199,8 +199,9 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const options = {
       httpOnly: true,
       secure: true,
-    }
-    const { accessToken, newRefreshToken } = await generateAccessTokenAndRefreshToken(user._id);
+    };
+    const { accessToken, newRefreshToken } =
+      await generateAccessTokenAndRefreshToken(user._id);
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
@@ -218,8 +219,68 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   } catch (error) {
     throw new ApiError(401, error?.message || "Invalid refresh token");
   }
-  
+});
+
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  //  req.body --> oldPassword, newPassword
+  //  user er id-- > req.user._id
+  //  you can write curentPassword and newPassword in req.body
+
+  const { oldPassword, newPassword } = req.body;
+  const user = await User.findById(req.user?._id);
+  user.isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if (!user.isPasswordCorrect) {
+    throw new ApiError(400, "Old password is incorrect");
+  }
+
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully"));
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(new ApiResponse(200, req.user, "Current user fetched successfully"));
+});
+
+const updateAccontDetails = asyncHandler(async (req, res) => {
+  const { fullName, email } = req.body;
+
+
+  if (!fullName && !email) {
+    throw new ApiError(400, "Please provide fullName or email to update");
+  }
+
+  User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        fullName: fullName,
+        email: email
+      }
+    },
+    { new: true }
+  ).select("-password")
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Account details updated successfully"));
+
 });
 
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateAccontDetails,
+};
