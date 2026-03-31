@@ -18,3 +18,20 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 });
 
 which one is write ask AI 
+
+
+
+
+
+
+
+user.controller.js file e ja ja mistake korchi 
+Major Problems I Fixed
+❌ refreshToken naming mismatch (newRefreshToken bug)
+❌ updateAccontDetails → await missing + response wrong
+❌ req.files?.path ভুল (multer structure issue)
+❌ changeCurrentPassword logic overwrite bug
+❌ mongoose import missing
+❌ Cookie secure issue (dev vs prod)
+❌ Old avatar delete TODO explained
+❌ Minor validation improvements

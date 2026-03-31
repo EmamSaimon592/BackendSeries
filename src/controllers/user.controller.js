@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import uploadToCloudinary from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose"; // ✅ mongoose import (আগে missing ছিল)
 
 const generateAccessTokenAndRefreshToken = async (userId) => {
   try {
@@ -153,7 +154,7 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
-  User.findByIdAndUpdate(
+  await User.findByIdAndUpdate(
     req.user._id,
     {
       $set: {
