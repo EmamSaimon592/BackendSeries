@@ -4,7 +4,7 @@ import { User } from "../models/user.model.js";
 import uploadToCloudinary from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
-import mongoose from "mongoose"; // ✅ mongoose import (আগে missing ছিল)
+import mongoose from "mongoose"; // added for objectId
 
 const generateAccessTokenAndRefreshToken = async (userId) => {
   try {
@@ -22,7 +22,7 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
 const registerUser = asyncHandler(async (req, res) => {
   const { fullName, email, username, password } = req.body;
 
-  // 1️⃣ Validate required fields
+  // ১. সব প্রয়োজনীয় ফিল্ড চেক করা
   if (![fullName, email, username, password].every((f) => f?.trim() !== "")) {
     throw new ApiError(
       400,
@@ -30,7 +30,7 @@ const registerUser = asyncHandler(async (req, res) => {
     );
   }
 
-  // 2️⃣ Check if user already exists
+  // ২. আগে থেকে ইউজার আছে কিনা চেক করা
   const existedUser = await User.findOne({
     $or: [{ username: username.toLowerCase() }, { email: email.toLowerCase() }],
   });
@@ -39,7 +39,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(409, "User already exists with this username or email");
   }
 
-  // 3️⃣ Validate avatar and cover image
+  // ৩. Avatar এবং Cover Image এর লোকাল পাথ নেওয়া (multer file path access)
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
   // const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
@@ -56,7 +56,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar image is required");
   }
 
-  // 4️⃣ Upload images to Cloudinary
+  // ৪. Cloudinary তে ছবি আপলোড করা
   const avatar = await uploadToCloudinary(avatarLocalPath);
   const coverImage = coverImageLocalPath
     ? await uploadToCloudinary(coverImageLocalPath)
@@ -68,7 +68,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Failed to upload avatar image");
   }
 
-  // 5️⃣ Create user
+  // ৫. নতুন ইউজার তৈরি করা
   const user = await User.create({
     fullName,
     email: email.toLowerCase(),
@@ -78,7 +78,7 @@ const registerUser = asyncHandler(async (req, res) => {
     coverImage: coverImage?.url || "",
   });
 
-  // 6️⃣ Remove sensitive data before sending response
+  // ৬. সেনসিটিভ ডাটা বাদ দিয়ে ইউজার রিটার্ন করা
   const createdUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
@@ -92,6 +92,7 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, createdUser, "User registered successfully"));
 });
 
+// ==================== LOGIN USER ====================
 const loginUser = asyncHandler(async (req, res) => {
   // req body --> Data
   // username or email
@@ -103,10 +104,12 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const { email, username, password } = req.body;
 
+  // ইমেইল অথবা ইউজারনেম এবং পাসওয়ার্ড দেয়া হয়েছে কিনা চেক
   if (!password && !email) {
     throw new ApiError(400, "Please provide email or username and password");
   }
 
+  // ইউজার খুঁজে বের করা
   const user = await User.findOne({
     $or: [{ username }, { email }],
   });
@@ -115,19 +118,18 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found with this email or username");
   }
 
-  // akon pasword check korbo
+  // পাসওয়ার্ড চেক করা
   const isPasswordValid = await user.isPasswordCorrect(password);
 
   if (!isPasswordValid) {
     throw new ApiError(401, "Invalid password");
   }
 
-  // refresh token and generate token ashe gese
-
+  // Access ও Refresh Token তৈরি করা
   const { accessToken, refreshToken } =
     await generateAccessTokenAndRefreshToken(user._id);
 
-  // cookie set korbo
+  // cookie set korbo (সেনসিটিভ ডাটা ছাড়া ইউজার ডাটা নেওয়া)
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
@@ -153,6 +155,7 @@ const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
+
 const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
@@ -176,6 +179,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     .clearCookie("refreshToken", options)
     .json(new ApiResponse(200, {}, "User logged out successfully"));
 });
+
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
@@ -201,6 +205,14 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       httpOnly: true,
       secure: true,
     };
+    // // ✅ FIX: naming correct
+    // const { accessToken, refreshToken } =
+    //   await generateAccessTokenAndRefreshToken(user._id);
+
+    // const options = {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === "production",
+    // };
     const { accessToken, newRefreshToken } =
       await generateAccessTokenAndRefreshToken(user._id);
     return res
@@ -222,26 +234,51 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
+
+
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   //  req.body --> oldPassword, newPassword
   //  user er id-- > req.user._id
   //  you can write curentPassword and newPassword in req.body
-
+  // req.body থেকে পুরানো ও নতুন পাসওয়ার্ড নেওয়া হচ্ছে
   const { oldPassword, newPassword } = req.body;
-  const user = await User.findById(req.user?._id);
-  user.isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
 
-  if (!user.isPasswordCorrect) {
+  // ইনপুট ভ্যালিডেশন: দুইটা ফিল্ডই আছে কিনা চেক
+  if (!oldPassword || !newPassword) {
+    throw new ApiError(400, "Both old and new password are required");
+  }
+
+  // নতুন পাসওয়ার্ড যেন পুরানোটার মতো না হয়
+  if (oldPassword === newPassword) {
+    throw new ApiError(400, "New password must be different from old password");
+  }
+
+  // লগইন করা ইউজারের ID দিয়ে ডাটাবেজ থেকে ইউজার খোঁজা হচ্ছে
+  const user = await User.findById(req.user?._id);
+
+  // ইউজার না পেলে error throw করা
+  if (!user) throw new ApiError(404, "User not found");
+
+  // পুরানো পাসওয়ার্ড সঠিক কিনা চেক (bcrypt compare)
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+  // যদি পুরানো পাসওয়ার্ড ভুল হয় → error
+  if (!isPasswordCorrect) {
     throw new ApiError(400, "Old password is incorrect");
   }
 
+  // নতুন পাসওয়ার্ড সেট করা হচ্ছে (pre-save middleware এ hash হবে)
   user.password = newPassword;
-  await user.save({ validateBeforeSave: false });
 
+  // ডাটাবেজে আপডেট সেভ করা
+  await user.save();
+
+  // সফল হলে success response পাঠানো
   return res
     .status(200)
     .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
+
 
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
@@ -257,7 +294,7 @@ const updateAccontDetails = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Please provide fullName or email to update");
   }
 
-  User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -270,43 +307,62 @@ const updateAccontDetails = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, {}, "Account details updated successfully"));
+    .json(new ApiResponse(200, user, "Account details updated successfully"));
 
 });
 
-const updateUserAvatar = asyncHandler(async (req, res) => { 
-  const avatarLocalPath = req.files?.path;
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  // multer দিয়ে আপলোড করা ফাইলের path নেওয়া
+  const avatarLocalPath = req.file?.path;
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar file is missing");
   }
 
-  // todo --> old avatar delete from cloudinary
-  
-  const avatar = await uploadToCloudinary(avatarLocalPath);
-  if (!avatar.url) {
+  // বর্তমান ইউজার খোঁজা (পুরানো avatar delete করার জন্য)
+  const user = await User.findById(req.user?._id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // ==================== OLD AVATAR DELETE ====================
+  if (user.avatar?.public_id) {
+    try {
+      await cloudinary.uploader.destroy(user.avatar.public_id);
+    } catch (error) {
+      console.log("Cloudinary delete error:", error);
+    }
+  }
+
+  // ==================== NEW AVATAR UPLOAD ====================
+  const uploadedAvatar = await uploadToCloudinary(avatarLocalPath);
+
+  if (!uploadedAvatar?.url || !uploadedAvatar?.public_id) {
     throw new ApiError(400, "Error while uploading avatar");
   }
-  
-  const user = await User.findByIdAndUpdate(
-    req.user?._id,
-    { 
-      $set: {
-        avatar: avatar.url
-      }
-     },
-    { new: true }
-  ).select("-password");
 
+  // ==================== DB UPDATE ====================
+  user.avatar = {
+    url: uploadedAvatar.url,
+    public_id: uploadedAvatar.public_id,
+  };
+
+  await user.save();
+
+  // password hide করার জন্য select use
+  const updatedUser = await User.findById(user._id).select("-password");
+
+  // ==================== RESPONSE ====================
   return res
     .status(200)
-    .json(new ApiResponse(200, user, "Avatar updated successfully"));
-  
-  
+    .json(new ApiResponse(200, updatedUser, "Avatar updated successfully"));
 });
 
+
 const updateUserCoverImage = asyncHandler(async (req, res) => { 
-  const coverImageLocalPath = req.files?.path;
+  const coverImageLocalPath = req.file?.path;
 
   if (!coverImageLocalPath) {
     throw new ApiError(400, "Cover image file is missing");

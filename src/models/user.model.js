@@ -62,23 +62,37 @@ const userSchema = new Schema(
       type: String,
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters"],
+      select: false, // 🔐 by default password hide thakbe query te
     },
 
     refreshToken: {
       type: String,
+      select: false, // 🔐 by default refresh token hide thakbe query te
     },
   },
   { timestamps: true }
 );
 
-// 🔐 Password hash (save এর আগে auto hash হবে)
-userSchema.pre("save", async function () {
-  if (!this.isModified("password")) return; // 🔥 unnecessary hash prevent
+// ==================== INDEXES ====================
+// 🔥 বড় অ্যাপের জন্য query fast করতে
+userSchema.index({ email: 1 });
+userSchema.index({ username: 1 });
 
-  this.password = await bcrypt.hash(this.password, 10);
+
+// 🔐 Password hash (save এর আগে auto hash হবে)
+userSchema.pre("save", async function (next) {
+  try {
+    if (!this.isModified("password")) return next();
+
+    this.password = await bcrypt.hash(this.password, 10);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 // 🔑 Password check method
+// 🔑 login এর সময় password compare
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
@@ -110,6 +124,18 @@ userSchema.methods.generateRefreshToken = function () {
       expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
     }
   );
+};
+
+
+// ==================== HIDE SENSITIVE DATA ====================
+// 🔥 response এ password, refreshToken auto remove হবে
+userSchema.methods.toJSON = function () {
+  const user = this.toObject();
+
+  delete user.password;
+  delete user.refreshToken;
+
+  return user;
 };
 
 export const User = mongoose.model("User", userSchema);
