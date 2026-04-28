@@ -2,13 +2,17 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
-
-
 const app = express();
+
+// cors configuration kora hocche, jate frontend theke backend e request pathano jay. CORS_ORIGIN environment variable theke allowed origin set kora hocche, ebong credentials true kora hocche jate cookies o send kora jay.
+
 app.use(cors({
   origin: process.env.CORS_ORIGIN,
   Credentials: true
 }))
+
+
+// Middlewares use kora hocche, jate request body theke JSON data parse kora jay, URL-encoded data parse kora jay, static files serve kora jay, ebong cookies parse kora jay. Request body size limit 10mb set kora hocche.
 
 app.use(express.json({limit: "10mb"}));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));

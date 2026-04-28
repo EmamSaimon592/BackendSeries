@@ -1,3 +1,5 @@
+// server start korar age amader database er sathe connection establish korte hobe. tai amra ekta alada file create korbo db/index.js te jekhane amra mongoose diye database connection establish korbo. tarpor amra index.js file e giye oi connection function ke call korbo.
+
 import app from "./app.js";
 import dotenv from "dotenv";
 import connectDB from "./db/index.js";
@@ -16,27 +18,4 @@ connectDB()
     console.log("Mongo db connection failed !!!", err);
   });
 
-/*
-import mongoose from "mongoose";
-import { DB_NAME } from "./constants";
-import express from "express";
-const app = express();
-
-
-(async () => {
-  try {
-    await mongoose.connect(`${process.env.MONGO_URI}/${DB_NAME}`);
-    app.on("error", (error) => {
-      console.log("our application is not able to talk the Database", error);
-      throw error;
-    })
-
-    app.listen(process.env.PORT || 8000, () => {
-      console.log(`Server is running on port ${process.env.PORT}`);
-    });
-  } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
-    throw error;
-  }
-})();
-*/
+  
